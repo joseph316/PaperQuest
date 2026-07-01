@@ -1,6 +1,6 @@
 {
   "name": "paperquest",
-  "version": "0.12.6",
+  "version": "0.12.5",
   "description": "PaperQuest desktop app",
   "type": "module",
   "main": "main.mjs",
@@ -34,6 +34,7 @@
       ]
     },
     "nsis": {
+      "artifactName": "${productName}-Setup-${version}.${ext}",
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
@@ -41,13 +42,12 @@
       "shortcutName": "PaperQuest",
       "include": "build/uninstaller.nsh"
     },
-    "publish": [
-      {
-        "provider": "github",
-        "owner": "joseph316",
-        "repo": "paperquest"
-      }
-    ]
+    "publish": {
+      "provider": "github",
+      "owner": "joseph316",
+      "repo": "PaperQuest",
+      "releaseType": "release"
+    }
   },
   "devDependencies": {
     "electron": "^31.7.7",

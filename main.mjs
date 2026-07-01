@@ -77,7 +77,9 @@ function setupAutoUpdater() {
     });
 
     if (result.response === 0) {
-      autoUpdater.downloadUpdate();
+      autoUpdater.downloadUpdate().catch((err) => {
+        dialog.showErrorBox('다운로드 오류', err?.stack || err?.message || String(err));
+      });
     }
   });
 
@@ -96,9 +98,9 @@ function setupAutoUpdater() {
       autoUpdater.quitAndInstall();
     }
   });
-
-  autoUpdater.on('error', () => {
-    // 초기 배포 전에는 에러가 날 수 있으므로 조용히 무시
+ 
+  autoUpdater.on('error', (err) => {
+    dialog.showErrorBox('업데이트 오류', err?.stack || err?.message || String(err));
   });
 }
 
