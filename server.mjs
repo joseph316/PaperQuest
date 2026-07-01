@@ -2,14 +2,23 @@ import { createServer } from 'node:http';
 import { readFile, writeFile } from 'node:fs/promises';
 import { existsSync, mkdirSync } from 'node:fs';
 import { extname, join, normalize } from 'node:path';
+import { homedir } from 'node:os';
 
 const DEFAULT_PORT = Number(process.env.PORT || 8787);
 const MODEL = process.env.OPENAI_MODEL || 'gpt-4.1-mini';
 const ROOT = process.env.APP_ROOT || process.cwd();
-const DATA_DIR = process.env.DATA_DIR || ROOT;
-if (!existsSync(DATA_DIR)) mkdirSync(DATA_DIR, { recursive: true });
-const DATA_FILE = join(DATA_DIR, 'paperquest-data.json');
 
+// Electron이 넘겨주면 그 경로 사용
+// 아니면 Windows AppData 사용
+const DATA_DIR =
+  process.env.DATA_DIR ||
+  join(homedir(), "AppData", "Roaming", "PaperQuest");
+
+if (!existsSync(DATA_DIR)) {
+  mkdirSync(DATA_DIR, { recursive: true });
+}
+
+const DATA_FILE = join(DATA_DIR, "paperquest-data.json");
 async function loadDotEnv() {
   try {
     const envPath = join(ROOT, '.env');
