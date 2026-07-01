@@ -19,7 +19,7 @@ function getAppRoot() {
 
 async function startLocalServer() {
   const appRoot = getAppRoot();
-  const dataDir = app.getPath('userData');
+  const dataDir = path.join(app.getPath('appData'), 'PaperQuestData');
 
   process.env.APP_ROOT = appRoot;
   process.env.DATA_DIR = dataDir;
@@ -121,12 +121,29 @@ app.whenReady().then(async () => {
   });
 });
 
-app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') app.quit();
-});
+let isQuitting = false;
 
-app.on('before-quit', () => {
-  if (server) {
-    try { server.close(); } catch {}
+async function stopLocalServer() {
+  if (!server) return;
+  try {
+    await new Promise((resolve) => server.close(resolve));
+  } catch {}
+  server = null;
+}
+
+app.on('window-all-closed', async () => {
+  if (process.platform !== 'darwin') {
+    isQuitting = true;
+    await stopLocalServer();
+    app.quit();
   }
 });
+
+app.on('before-quit', async (event) => {
+  if (isQuitting) return;
+  event.preventDefault();
+  isQuitting = true;
+  await stopLocalServer();
+  app.quit();
+});
+
