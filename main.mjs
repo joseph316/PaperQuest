@@ -1,9 +1,10 @@
 import { app, BrowserWindow, shell, dialog } from 'electron';
-import { autoUpdater } from 'electron-updater';
+import updater from 'electron-updater';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { existsSync, copyFileSync } from 'node:fs';
 
+const { autoUpdater } = updater;
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 

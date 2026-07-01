@@ -789,14 +789,7 @@ async function loadInitialState() {
   }
 
   if (!loaded) {
-    const legacy = localStorage.getItem(STORAGE_KEY)
-      || localStorage.getItem('paperQuestState.v6')
-      || localStorage.getItem('paperQuestState.v5')
-      || localStorage.getItem('paperQuestState.v4')
-      || localStorage.getItem('paperQuestState.v3')
-      || localStorage.getItem('paperQuestState.v2')
-      || localStorage.getItem('paperQuestState');
-    loaded = legacy ? JSON.parse(legacy) : defaultState();
+    loaded = defaultState();
   }
 
   Object.assign(state, normalizeState(loaded));
