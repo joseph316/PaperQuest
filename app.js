@@ -12,10 +12,7 @@ function defaultState() {
     chatHistory: [],
     translationHistory: [],
     notes: [],
-    papers: [
-      { id: crypto.randomUUID(), title: 'DarSwin: Distortion Aware Radial Swin Transformer', topic: 'wide-angle vision / distortion', time: 40, status: 'new', source: 'sample' },
-      { id: crypto.randomUUID(), title: 'Vision Transformer with Deformable Attention', topic: 'attention / vision transformer', time: 35, status: 'new', source: 'sample' }
-    ]
+    papers: []
   };
 }
 
@@ -27,7 +24,7 @@ function normalizeState(raw = {}) {
   base.chatHistory ??= [];
   base.translationHistory ??= [];
   base.notes ??= [];
-  base.papers = Array.isArray(base.papers) && base.papers.length ? base.papers.map(migratePaper) : defaultState().papers.map(migratePaper);
+  base.papers = Array.isArray(base.papers) ? base.papers.map(migratePaper) : [];
   return base;
 }
 let searchCache = [];
@@ -408,7 +405,7 @@ async function searchPapers(query, yearFilter, limit) {
     const [from, to] = yearFilter.split('-');
     params.set('filter', `from_publication_date:${from}-01-01,to_publication_date:${to}-12-31`);
   }
-  const url = `https://api.openalex.org/works?${params.toString()}`;
+  const url = `/api/search?query=${encodeURIComponent(query)}&limit=${limit}`;
   const res = await fetch(url);
   if (!res.ok) throw new Error(`검색 실패: ${res.status}`);
   const data = await res.json();

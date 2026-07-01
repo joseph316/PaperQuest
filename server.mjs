@@ -4,6 +4,10 @@ import { existsSync, mkdirSync } from 'node:fs';
 import { extname, join, normalize } from 'node:path';
 import { homedir } from 'node:os';
 
+
+const OPENALEX_API_KEY = process.env.OPENALEX_API_KEY || "om3DNcYVWmU7z7qwcbQpUc";
+const OPENALEX_MAILTO = process.env.OPENALEX_MAILTO || "joseph316@unist.ac.kr";
+
 const DEFAULT_PORT = Number(process.env.PORT || 8787);
 const MODEL = process.env.OPENAI_MODEL || 'gpt-4.1-mini';
 const ROOT = process.env.APP_ROOT || process.cwd();
@@ -20,22 +24,39 @@ if (!existsSync(DATA_DIR)) {
 
 const DATA_FILE = join(DATA_DIR, "paperquest-data.json");
 async function loadDotEnv() {
-  try {
-    const envPath = join(ROOT, '.env');
-    const text = await readFile(envPath, 'utf8');
-    for (const rawLine of text.split(/\r?\n/)) {
-      const line = rawLine.trim();
-      if (!line || line.startsWith('#') || !line.includes('=')) continue;
-      const idx = line.indexOf('=');
-      const key = line.slice(0, idx).trim();
-      let value = line.slice(idx + 1).trim();
-      if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
-        value = value.slice(1, -1);
+  const envPaths = [
+    join(ROOT, '.env'),
+    join(DATA_DIR, '.env')
+  ];
+
+  for (const envPath of envPaths) {
+    try {
+      const text = await readFile(envPath, 'utf8');
+
+      for (const rawLine of text.split(/\r?\n/)) {
+        const line = rawLine.trim();
+        if (!line || line.startsWith('#') || !line.includes('=')) continue;
+
+        const idx = line.indexOf('=');
+        const key = line.slice(0, idx).trim();
+        let value = line.slice(idx + 1).trim();
+
+        if (
+          (value.startsWith('"') && value.endsWith('"')) ||
+          (value.startsWith("'") && value.endsWith("'"))
+        ) {
+          value = value.slice(1, -1);
+        }
+
+        if (key && process.env[key] === undefined) {
+          process.env[key] = value;
+        }
       }
-      if (key && process.env[key] === undefined) process.env[key] = value;
+
+      console.log(`Loaded .env: ${envPath}`);
+    } catch {
+      // this .env path is optional
     }
-  } catch {
-    // .env is optional.
   }
 }
 
@@ -151,6 +172,61 @@ async function handleTranslate(req, res) {
   send(res, 200, JSON.stringify({ translatedText, source: 'MyMemory', match: data.responseData?.match ?? null }));
 }
 
+async function handleSearch(req, res) {
+  const url = new URL(req.url, `http://localhost:${DEFAULT_PORT}`);
+
+  const query = (url.searchParams.get("query") || "").trim();
+  const limit = url.searchParams.get("limit") || "3";
+  const filter = url.searchParams.get("filter") || "";
+
+  if (query.length < 3) {
+    send(res, 400, JSON.stringify({ error: "검색어는 3글자 이상 입력해 주세요." }));
+    return;
+  }
+
+  const params = new URLSearchParams({
+    search: query,
+    "per-page": limit,
+    sort: "relevance_score:desc"
+  });
+
+  if (filter) params.set("filter", filter);
+
+  if (process.env.OPENALEX_MAILTO) {
+    params.set("mailto", process.env.OPENALEX_MAILTO);
+  }
+  
+  if (OPENALEX_MAILTO) {
+    params.set("mailto", OPENALEX_MAILTO);
+  }
+
+  const api = "https://api.openalex.org/works?" + params.toString();
+
+  console.log("OpenAlex request:", api);
+  console.log("OpenAlex key loaded:", Boolean(OPENALEX_API_KEY));
+  console.log("OpenAlex mailto:", OPENALEX_MAILTO || "(none)");
+
+  const response = await fetch(api, {
+    headers: {
+      "User-Agent": "PaperQuest/0.12.3",
+      "Authorization": `Bearer ${OPENALEX_API_KEY}`
+    }
+  });
+
+  const text = await response.text();
+  console.log("OpenAlex status:", response.status);
+
+  if (!response.ok) {
+    send(res, response.status, JSON.stringify({
+      error: `OpenAlex 검색 실패: ${response.status}`,
+      detail: text.slice(0, 300)
+    }));
+    return;
+  }
+
+  send(res, 200, text, "application/json; charset=utf-8");
+}
+
 async function serveStatic(req, res) {
   const url = new URL(req.url, `http://localhost:${DEFAULT_PORT}`);
   let pathname = decodeURIComponent(url.pathname === '/' ? '/index.html' : url.pathname);
@@ -164,11 +240,20 @@ export function startPaperQuestServer({ port = DEFAULT_PORT } = {}) {
   const server = createServer(async (req, res) => {
     try {
       if (req.method === 'OPTIONS') return send(res, 204, '');
-      if (req.url === '/health') return send(res, 200, JSON.stringify({ ok: true, dataFile: DATA_FILE }));
+      // if (req.url === '/health') return send(res, 200, JSON.stringify({ ok: true, dataFile: DATA_FILE }));
+      if (req.url === '/health') return send(res, 200, JSON.stringify({
+        ok: true,
+        dataFile: DATA_FILE,
+        dataDir: DATA_DIR,
+        root: ROOT,
+        openAlexKeyLoaded: Boolean(process.env.OPENALEX_API_KEY),
+        openAlexMailto: process.env.OPENALEX_MAILTO || null
+      }));
       if (req.url === '/api/state' && req.method === 'GET') return await handleGetState(req, res);
       if (req.url === '/api/state' && req.method === 'POST') return await handleSaveState(req, res);
       if (req.url === '/api/chat' && req.method === 'POST') return await handleChat(req, res);
       if (req.url === '/api/translate' && req.method === 'POST') return await handleTranslate(req, res);
+      if (req.url.startsWith('/api/search') && req.method === 'GET') return await handleSearch(req, res);
       if (req.method === 'GET') return await serveStatic(req, res);
       send(res, 405, JSON.stringify({ error: 'Method not allowed' }));
     } catch (error) {
