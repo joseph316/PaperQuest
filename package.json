@@ -1,6 +1,6 @@
 {
-  "name": "paperquest-local",
-  "version": "0.12.2",
+  "name": "paperquest",
+  "version": "0.12.3",
   "description": "PaperQuest desktop app",
   "type": "module",
   "main": "main.mjs",
@@ -11,7 +11,7 @@
     "pack": "electron-builder --dir"
   },
   "build": {
-    "appId": "kr.paperquest.local",
+    "appId": "kr.paperquest.app",
     "productName": "PaperQuest",
     "asar": true,
     "files": [
@@ -20,10 +20,8 @@
       "index.html",
       "app.js",
       "style.css",
-      "paperquest-data.json",
       ".env.example",
-      "package.json",
-      ".gitignore"
+      "package.json"
     ],
     "win": {
       "target": [
@@ -40,11 +38,22 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "PaperQuest"
-    }
+      "shortcutName": "PaperQuest",
+      "include": "build/uninstaller.nsh"
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "joseph316",
+        "repo": "paperquest"
+      }
+    ]
   },
   "devDependencies": {
     "electron": "^31.7.7",
     "electron-builder": "^24.13.3"
+  },
+  "dependencies": {
+    "electron-updater": "^6.8.9"
   }
 }

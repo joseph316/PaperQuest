@@ -1,4 +1,5 @@
 import { app, BrowserWindow, shell, dialog } from 'electron';
+import { autoUpdater } from 'electron-updater';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { existsSync, copyFileSync } from 'node:fs';
@@ -60,10 +61,55 @@ function createWindow() {
   });
 }
 
+function setupAutoUpdater() {
+  autoUpdater.autoDownload = false;
+
+  autoUpdater.on('update-available', async () => {
+    const result = await dialog.showMessageBox(mainWindow, {
+      type: 'info',
+      title: '업데이트 가능',
+      message: '새 버전의 PaperQuest가 있습니다.',
+      detail: '지금 다운로드할까요?',
+      buttons: ['다운로드', '나중에'],
+      defaultId: 0,
+      cancelId: 1
+    });
+
+    if (result.response === 0) {
+      autoUpdater.downloadUpdate();
+    }
+  });
+
+  autoUpdater.on('update-downloaded', async () => {
+    const result = await dialog.showMessageBox(mainWindow, {
+      type: 'info',
+      title: '업데이트 준비 완료',
+      message: '업데이트가 다운로드되었습니다.',
+      detail: '앱을 재시작해서 업데이트를 설치할까요?',
+      buttons: ['재시작', '나중에'],
+      defaultId: 0,
+      cancelId: 1
+    });
+
+    if (result.response === 0) {
+      autoUpdater.quitAndInstall();
+    }
+  });
+
+  autoUpdater.on('error', () => {
+    // 초기 배포 전에는 에러가 날 수 있으므로 조용히 무시
+  });
+}
+
 app.whenReady().then(async () => {
   try {
     await startLocalServer();
     createWindow();
+    setupAutoUpdater();
+
+    if (app.isPackaged) {
+      autoUpdater.checkForUpdates();
+    }
   } catch (error) {
     dialog.showErrorBox('PaperQuest 실행 오류', error?.message || String(error));
     app.quit();
