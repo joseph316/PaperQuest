@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PaperQuest - 논문 읽기 동기부여 앱</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <h1>PaperQuest</h1>
+      <p>논문 검색부터 상세보기, 연구노트, 태그 관리까지 이어주는 연구 루틴 앱</p>
+    </div>
+    <div class="stats">
+      <div><strong id="xp">0</strong><span>XP</span></div>
+      <div><strong id="streak">0</strong><span>day streak</span></div>
+      <div><strong id="addedCount">0</strong><span>papers added</span></div>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="panel wide search-panel" id="searchPanel">
+      <div class="section-head compact-head">
+        <div>
+          <h2>실제 논문 검색</h2>
+          <p class="muted">OpenAlex API에서 검색한 뒤 후보 목록에 추가합니다.</p>
+        </div>
+        <button id="clearSearchBtn" type="button" class="secondary small-btn">검색결과 접기</button>
+      </div>
+      <form id="searchForm" class="search-form compact-search">
+        <input id="searchInput" placeholder="예: distortion aware transformer, VR hand input, haptic feedback" required />
+        <select id="yearFilter">
+          <option value="">연도 제한 없음</option>
+          <option value="2022-2026">2022–2026</option>
+          <option value="2020-2026">2020–2026</option>
+          <option value="2015-2026">2015–2026</option>
+        </select>
+        <select id="resultLimit">
+          <option value="3">3개 표시</option>
+          <option value="5">5개 표시</option>
+          <option value="10">10개 표시</option>
+        </select>
+        <button type="submit">검색</button>
+      </form>
+      <div id="searchStatus" class="muted small"></div>
+      <div id="searchResults" class="search-results compact-results"></div>
+    </section>
+
+    <section class="panel wide">
+      <div class="section-head">
+        <div>
+          <h2>오늘의 논문 후보</h2>
+          <p id="candidateSummary" class="muted small">총 0개 후보</p>
+        </div>
+        <div style="display:none;">
+          <button id="exportBtn">백업 내보내기</button>
+          <input id="importInput" type="file" />
+        </div>
+        <!-- <div class="button-row">
+          <button id="exportBtn" type="button" class="secondary">백업 내보내기</button>
+          <label class="file-btn secondary">
+            백업 불러오기
+            <input id="importInput" type="file" accept="application/json" />
+          </label>
+        </div> -->
+      </div>
+      <div class="candidate-controls">
+        <input id="candidateSearch" placeholder="후보 안에서 검색: 제목, 저자, 태그, 초록" />
+        <div class="pager">
+          <button id="prevCandidatePage" type="button" class="secondary">이전</button>
+          <span id="candidatePageLabel">1 / 1</span>
+          <button id="nextCandidatePage" type="button" class="secondary">다음</button>
+        </div>
+      </div>
+      <div id="paperList" class="paper-list"></div>
+    </section>
+
+    <section class="panel">
+      <h2>논문 상세보기</h2>
+      <p class="muted">선택한 논문의 태그와 읽기 진행 상태를 관리합니다.</p>
+      <div id="questBox" class="quest-box empty">논문을 선택하면 상세보기와 퀘스트가 나타납니다.</div>
+    </section>
+
+    <section class="panel">
+      <h2>선택한 논문 연구 노트</h2>
+      <div id="selectedPaperLabel" class="selected-label muted">논문을 먼저 선택하세요.</div>
+      <textarea id="noteInput" placeholder="이 논문을 왜 읽었는지, 무엇을 배웠는지 적어두세요."></textarea>
+      <button id="saveNoteBtn">노트 저장</button>
+      <div id="notes" class="notes"></div>
+    </section>
+
+    <!-- GPT 읽기 도우미는 현재 주석 처리했습니다.
+    <section class="panel">
+      <h2>GPT 읽기 도우미</h2>
+      <p class="muted">로컬 서버를 실행하면 사이트 안에서 직접 답변을 받을 수 있습니다. 서버가 꺼져 있으면 프롬프트 복사 방식으로 사용하세요.</p>
+      <div id="chatPaperLabel" class="selected-label muted">논문을 먼저 선택하세요.</div>
+      <div id="gptStatus" class="gpt-status muted small">로컬 GPT 서버 확인 전</div>
+      <textarea id="chatInput" placeholder="예: 이 논문의 핵심 contribution을 3개로 정리해줘. 내 연구와 연결점도 알려줘."></textarea>
+      <div class="button-row">
+        <button id="askLocalGptBtn" type="button">사이트에서 GPT에게 질문</button>
+        <button id="copyChatPromptBtn" type="button" class="secondary">프롬프트 복사</button>
+        <button id="openChatGPTBtn" type="button" class="secondary">ChatGPT 열기</button>
+      </div>
+      <details class="setup-help">
+        <summary>로컬 GPT 직접 응답 설정 방법</summary>
+        <ol>
+          <li>터미널에서 이 폴더로 이동</li>
+          <li><code>set OPENAI_API_KEY=본인_API_KEY</code> 입력 (PowerShell은 <code>$env:OPENAI_API_KEY="본인_API_KEY"</code>)</li>
+          <li><code>node server.mjs</code> 실행</li>
+          <li>브라우저에서 <code>http://localhost:8787</code> 열기</li>
+        </ol>
+      </details>
+      <div id="chatHistory" class="notes"></div>
+    </section>
+
+    -->
+
+
+
+    <section class="panel translator-panel">
+      <h2>단어 번역</h2>
+      <p class="muted">API 키 없이 앱 안에서 영어 단어/짧은 문장을 한국어로 번역합니다.</p>
+      <div class="translation-form">
+        <input id="translateInput" placeholder="예: equivariance, distortion, ablation" />
+        <select id="translateDirection">
+          <option value="en|ko" selected>영어 → 한국어</option>
+          <option value="ko|en">한국어 → 영어</option>
+        </select>
+        <button id="translateBtn" type="button">번역</button>
+      </div>
+      <div id="translationStatus" class="muted small"></div>
+      <div id="translationResult" class="translation-result muted small">번역할 단어를 입력하세요.</div>
+      <h3 class="subhead">최근 번역</h3>
+      <div id="translationHistory" class="translation-history"></div>
+    </section>
+
+    <section class="panel wide">
+      <div class="section-head">
+        <div>
+          <h2>연구 태그 모아보기</h2>
+          <p class="muted">논문마다 “왜 읽는지” 태그를 붙이면 이곳에서 연구 흐름별로 모아볼 수 있습니다.</p>
+        </div>
+        <button id="exportBibBtn" type="button" class="secondary">BibTeX 내보내기</button>
+      </div>
+      <div id="tagCloud" class="tag-cloud"></div>
+      <div class="candidate-controls tag-controls">
+        <select id="tagPageSize">
+          <option value="5" selected>5개씩 보기</option>
+          <option value="10">10개씩 보기</option>
+          <option value="20">20개씩 보기</option>
+        </select>
+        <div class="pager">
+          <button id="prevTagPage" type="button" class="secondary">이전</button>
+          <span id="tagPageLabel">1 / 1</span>
+          <button id="nextTagPage" type="button" class="secondary">다음</button>
+        </div>
+      </div>
+      <div id="tagGroups" class="tag-groups"></div>
+    </section>
+
+    <section class="panel wide">
+      <h2>XP 기록</h2>
+      <div id="xpLog" class="xp-log"></div>
+    </section>
+  </main>
+
+  <div id="xpPopup" class="xp-popup"></div>
+  <div id="duplicateModal" class="modal-backdrop" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="duplicateTitle">
+      <button id="closeDuplicateModal" type="button" class="modal-close" aria-label="닫기">×</button>
+      <h3 id="duplicateTitle">이미 후보에 있는 논문입니다</h3>
+      <p id="duplicateMessage" class="muted"></p>
+      <div class="button-row">
+        <button id="viewDuplicatePaperBtn" type="button">해당 논문 상세보기</button>
+        <button id="dismissDuplicateBtn" type="button" class="secondary">닫기</button>
+      </div>
+    </div>
+  </div>
+  <div id="toast" class="toast"></div>
+  <script src="app.js"></script>
+</body>
+</html>
